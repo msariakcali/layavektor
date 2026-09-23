@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitapta Arama</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --good: #1f7a4d; --good-soft: #e3f3ea;
+    --warn: #a4570b; --warn-soft: #fbeedd; --bad: #b3261e; --bad-soft: #fbe5e3; --mark: #fff1a8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9a94; --line: #34332f;
+      --accent: #8aa8ff; --accent-soft: #232c45; --good: #6fcf9a; --good-soft: #1b3326;
+      --warn: #f0b36b; --warn-soft: #3a2a17; --bad: #f28b82; --bad-soft: #3d1f1d; --mark: #5a4b12;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .ask { display: flex; gap: 8px; }
+  .ask input { flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px;
+               background: var(--bg); color: var(--ink); font: inherit; }
+  .ask input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff;
+           padding: 8px 16px; cursor: pointer; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { button { color: #10131c; } }
+  .examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+          border: none; cursor: pointer; font-weight: 400; }
+  .chip.odd { background: var(--warn-soft); color: var(--warn); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); gap: 16px; }
+  .col h2 { font-size: 16px; margin: 0; }
+  .col .desc { font-size: 12px; color: var(--muted); margin: 2px 0 10px; min-height: 34px; }
+  .col .ms { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; float: right; }
+  .res { border-top: 1px solid var(--line); padding: 10px 0; }
+  .meta { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .rank { font-variant-numeric: tabular-nums; }
+  .p { padding: 1px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .p.hi { background: var(--good-soft); color: var(--good); }
+  .p.mid { background: var(--warn-soft); color: var(--warn); }
+  .p.lo { background: var(--bad-soft); color: var(--bad); }
+  .p.raw { background: var(--line); color: var(--ink); font-weight: 400; }
+  .text { font-size: 13.5px; cursor: pointer; }
+  .text.short { display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; overflow: hidden; }
+  mark { background: var(--mark); color: inherit; border-radius: 2px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .note { font-size: 13px; color: var(--muted); margin-top: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kitapta arama — eğitimsiz deneme</h1>
+  <p class="sub" id="info">yükleniyor…</p>
+
+  <div class="panel">
+    <div class="ask">
+      <input id="q" placeholder="Kitaba bir soru sor, ör. Yanlışlanabilirlik ilkesi nedir?">
+      <button onclick="ask()">Sor</button>
+    </div>
+    <div class="examples" id="examples"></div>
+    <div class="note">Hiçbir yöntem bu kitapla ya da "paragraf soruyu cevaplıyor mu?" göreviyle eğitilmedi.
+      v3 sadece emlak ilanlarıyla eğitildi; olasılıkları bu alanda anlamlı değil. Paragrafa tıklayınca tamamı açılır.</div>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</div>
+
+<script>
+const METHODS = [
+  ["bm25", "BM25 — kelime araması", "Klasik arama: sorudaki kelimeler (ilk 5 harf) paragrafta ne kadar geçiyor."],
+  ["bge", "bge-m3 — embedding (standart RAG)", "Hazır genel embedding modeli; paragraf başına tek vektör, kosinüs benzerliği."],
+  ["v3", "v3 — bizim model (emlakla eğitildi)", "Kelime vektörleri + kalibrasyon. Kitap görevini hiç görmedi."],
+  ["laya", "bge-m3 + hazır Laya", "bge-m3'ün ilk 30 sonucunu ince ayarsız Laya 'bu metin soruyu cevaplıyor mu?' diye sıralar."],
+];
+const EXAMPLES = [
+  "Yanlışlanabilirlik ilkesi nedir?", "Tümevarım sorunu nedir?", "Bilimsel yöntem hangi aşamalardan oluşur?",
+  "Bilimsel kuram ile bilimsel yasa arasındaki fark nedir?", "Uygunluk doğruluk kuramı neyi savunur?",
+  "Paradigma", "Bilgi nedir?",
+];
+const ODD = ["Fotosentez nasıl gerçekleşir?", "İstanbul'da kiralık daire fiyatları ne kadar?"];
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const norm = s => s.replace(/İ/g, "i").replace(/I/g, "ı").toLowerCase();
+const cls = p => p >= 0.7 ? "hi" : p >= 0.3 ? "mid" : "lo";
+
+function highlight(text, q) {
+  const stems = [...new Set(norm(q).match(/[\p{L}\d]+/gu) || [])].filter(w => w.length > 2).map(w => w.slice(0, 5));
+  return esc(text).replace(/[\p{L}\d]+/gu, w => stems.some(s => norm(w).startsWith(s)) ? `<mark>${w}</mark>` : w);
+}
+
+async function ask(q) {
+  const inp = document.getElementById("q");
+  if (q) inp.value = q;
+  q = inp.value.trim();
+  if (!q) return;
+  const grid = document.getElementById("grid");
+  grid.innerHTML = `<div class="muted">aranıyor…</div>`;
+  const r = await fetch("/api/search", {method: "POST", headers: {"Content-Type": "application/json"},
+                                        body: JSON.stringify({question: q, top_k: 8})}).then(r => r.json());
+  grid.innerHTML = METHODS.map(([key, name, desc]) => {
+    const m = r.methods[key];
+    return `<div class="panel col"><span class="ms">${m.ms} ms</span><h2>${name}</h2><div class="desc">${desc}</div>
+      ${m.results.map((x, i) => `<div class="res">
+        <div class="meta"><span class="rank">${i + 1}.</span>
+          ${x.prob ? `<span class="p ${cls(x.score)}">${(x.score * 100).toFixed(x.score > 0.995 || x.score < 0.005 ? 0 : 1)}%</span>`
+                   : `<span class="p raw">${x.score.toFixed(key === "bge" ? 3 : 1)}</span>`}
+          <span>s. ${x.page}${x.page_end !== x.page ? "–" + x.page_end : ""}</span></div>
+        <div class="text short" onclick="this.classList.toggle('short')">${highlight(x.text, q)}</div>
+      </div>`).join("")}</div>`;
+  }).join("");
+}
+
+document.getElementById("q").onkeydown = e => { if (e.key === "Enter") ask(); };
+const ex = document.getElementById("examples");
+for (const [list, kind] of [[EXAMPLES, ""], [ODD, "odd"]])
+  for (const q of list) {
+    const b = document.createElement("button");
+    b.className = "chip " + kind;
+    b.textContent = q + (kind ? " (kitapta yok)" : "");
+    b.onclick = () => ask(q);
+    ex.appendChild(b);
+  }
+fetch("/api/info").then(r => r.json()).then(i => {
+  document.getElementById("info").textContent =
+    `${i.books.join(", ")} · ${i.n_chunks} paragraf (~120 kelime) · indeksleme: bge-m3 ${i.timing.bge_index_sec.toFixed(1)} sn, ` +
+    `v3 ${i.timing.v3_index_sec.toFixed(1)} sn (${i.timing.v3_index_mb.toFixed(0)} MB)`;
+});
+</script>
+</body>
+</html>
