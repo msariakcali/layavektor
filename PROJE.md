@@ -133,6 +133,8 @@ umut verici bir sinyal veriyor. Kitap görevinde eğitilmiş bir v3'ün hedefi: 
 
 ## 8. Sonraki adımlar
 
+Ayrıntılı plan ve "kalibre RAG" değerlendirmesi: `KALIBRE_RAG.md`.
+
 1. **Kitap görevi için eğitim:** "Bu paragraf bu soruyu cevaplıyor mu?" — Türkçe soru-cevap verileri (TQuAD vb.),
    aynı belgeden zor negatifler, Türkçe Wikipedia'dan LLM ile üretilmiş sorular; ince ayarlı Laya öğretmen; v3
    mimarisi (Laya encoder'ından ya da bge-m3'ten başlatma).
