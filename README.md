@@ -108,15 +108,68 @@ yönlü eşik gördü. Çözüm: öğretmeni 200 ilanlık etiketli bir doğrulam
 yalnızca eğitimde sorulan bilgiyi tutmayı öğreniyor; "jeneratör" hiç sorulmadığı için vektörde yer bulmuyor.
 Cross-encoder metni sorgu anında okuduğu için bu sorunu yaşamıyor. Kelime soruları (E3) biraz yardım etti ama yetmedi.
 
-## Sonraki adım: yeni kavramlar
+## v3: çok vektörlü (token) temsil
 
-* **Çok vektörlü ilan temsili (ColBERT tipi, kalibre karar kafasıyla):** ilanı tek vektör yerine token veya
-  birkaç özet vektörle saklamak. Metnin kelime düzeyi bilgisi korunur, hâlâ indekslenebilir. Bedel: indeks
-  512 bayttan ~10-40 KB/ilana çıkar.
-* **Kavram çeşitliliğini büyütmek (genel model yolu):** binlerce kavram ve birden çok sektör. İlan vektörü o zaman
-  genel içerik tutmak zorunda kalır. Bu sentetik tek sektörde test edilemez.
-* **Hibrit:** soru vektörü eğitimdeki soru dağılımından uzaksa (yeni kavram), cevabı az sayıda aday üzerinde
-  cross-encoder'a bırakmak.
+Tek ilan vektörü yalnızca eğitimde sorulan bilgiyi tutuyordu. v3'te ilanın her token'ı için 128 boyutlu
+normalize bir vektör saklanır (ColBERT tipi). Soru token'ları ilandaki en benzer token'ı bulur, sonuçlar
+öğrenilen token ağırlıklarıyla toplanır ve sorudan gelen iki sayı (a, b) bu benzerliği **kalibre bir olasılığa**
+çevirir: `P = σ(a_q · Σ w_i max_t q_i·d_t + b_q)`. Birleşik sorgu, "sonuç yok" ve sayma aynen çalışır.
+
+Deneyler v2'den başlatıldı, v2 ile aynı veri ve hedeflerle 8 epoch eğitildi (`run_v3.sh`):
+* **v3a** (`MODEL=multi`): sadece token vektörleri
+* **v3b** (`MODEL=hybrid`): tek vektör + token vektörleri; eğitimde iki yol hem ayrı ayrı hem ortalama olarak
+  cevap vermek zorunda (aksi halde tek vektör eğitim sorularını zaten çözdüğü için token yolu hiç öğrenmezdi)
+
+| | v2 | v3a | v3b ortalama | **v3 = v3b token yolu** | Laya cross |
+|---|---|---|---|---|---|
+| Görülen soru, AUC | 0,993 | 0,999 | 0,998 | **0,999** (ECE 0,003) | 0,982 |
+| Yeni söyleniş | 0,927 | 0,958 | 0,964 | **0,970** | 0,930 |
+| **Görülmemiş soru** | 0,665 | 0,886 | 0,793 | **0,903** | 0,992 |
+| Görülmemiş + yeni söyleniş | 0,660 | 0,898 | 0,793 | **0,938** | 0,946 |
+| Birleşik AP, tümü | 0,745 | 0,903 | 0,829 | **0,907** | 0,883 |
+| Birleşik AP, görülen | 0,935 | 0,992 | 0,990 | **0,994** | 0,885 |
+| Birleşik AP, görülmemiş içeren | 0,449 | 0,765 | 0,578 | **0,773** | 0,880 |
+| "Sonuç yok" doğruluğu, görülen | 0,988 | 1,000 | 0,992 | **1,000** | 0,951 |
+| İndeks | 512 B/ilan | 22 KB | 22,8 KB | 22,8 KB | — |
+| 2.000 ilanda sorgu | 25 ms | 33 ms | 35 ms | 36 ms | 13,8 sn |
+
+Görülmemiş sorular, soru bazında AUC (`per_question.py`):
+
+| | v2 | v3a | v3b ort. | cross |
+|---|---|---|---|---|
+| Sarıyer | 0,49 | **1,00** | 0,95 | 1,00 |
+| oyun parkı | 0,59 | **1,00** | 0,83 | 0,99 |
+| jeneratör | 0,54 | **0,93** | 0,60 | 1,00 |
+| sahil | 0,55 | **0,88** | 0,72 | 1,00 |
+| Pendik | 0,52 | **0,86** | 0,69 | 1,00 |
+| takas | 0,48 | **0,85** | 0,65 | 1,00 |
+| ebeveyn banyosu | 0,60 | 0,76 | 0,74 | 0,95 |
+| klima | 0,59 | 0,57 | 0,61 | 1,00 |
+| m² > 120, fiyat < 8M, kira < 40k | 0,97–0,99 | 0,95–0,98 | 0,98–0,99 | 0,99 |
+
+1. **Token temsili görülmemiş kavram sorununu büyük ölçüde çözdü** (0,665 → 0,903). Metindeki kelime bilgisi
+   indekste kaldığı için hiç sorulmamış kavramlar bulunabiliyor. Görülen sorularda ve birleşik sorgularda
+   cross-encoder'ı geçiyor; görülmemiş kavramlarda hâlâ gerisinde (0,90 vs 0,99).
+2. **İki yolun ortalaması kötü bir birleştirme:** görülmemiş kavramda tek vektör yolu yazı tura attığı için
+   ortalamayı aşağı çekiyor (0,793). En iyisi hibrit eğitilen modelin yalnızca token yolu (0,903, v3a'dan da iyi;
+   tek tohum, fark küçük olabilir). `weights/v3` bu yapıda: `arch.combine = "token"`.
+3. **Kalan sorunlar:**
+   * **Anlam komşusu karışması:** "Klimalı mı?" mükemmel (ilk 10'un hepsi doğru, P 0,97–1,00), ama "Klima var mı?"
+     merkezi ısıtmalı ilanları getiriyor — eğitimdeki çok sayıda ısıtma sorusu "klima"yı o gruba çekmiş.
+   * **Görülmemiş kavramlarda kalibrasyon bozuk:** jeneratörde sıralama doğru (ilk 10'un hepsi doğru), ama tahmini
+     sayı 19, gerçek 238. Olasılıklar görülmemiş kavramlarda sistematik olarak düşük; "sonuç yok" ve sayma bu
+     kavramlarda güvenilir değil (görülmemiş içeren birleşik sorgularda "sonuç yok" doğruluğu 0,80).
+   * **İndeks 45 kat büyüdü** (512 B → 22,8 KB/ilan; 1M ilan ≈ 23 GB). ColBERTv2 tipi sıkıştırma ve 1M ölçeğinde
+     aday seçme (PLAID gibi) henüz yok; 2.000 ilanda kaba kuvvet tarama yapılıyor.
+
+## Sonraki adım
+
+* **Görülmemiş kavramlarda kalibrasyon:** a_q, b_q soru metninden öğreniliyor ve eğitimdeki kavramlara göre ayarlı.
+  Fikir: öğretmenle etiketlenmiş daha çeşitli kavramlar, ya da sorgu anında birkaç aday üzerinde cross-encoder ile
+  yeniden kalibrasyon.
+* **Genelleme testi başka bir alanda:** asıl hedef (eğitimde görülmemiş kitaplarda soru → alakalı paragraf) için
+  görev "bu paragraf bu soruyu cevaplıyor mu?" olur; görülmemiş kitap/konu ayrımıyla ve bge-m3 ile karşılaştırmalı.
+* **İndeks boyutu:** token vektörlerini sıkıştırmak (ör. 128 → 32 boyut, 8-bit), gereksiz token'ları atmak.
 
 ## Gereksinimler
 
@@ -133,7 +186,8 @@ Model ağırlıkları (`weights/`, sürüm başına ~620 MB) ve üretilen veri (
 ## Deneme arayüzü
 
 ```bash
-python demo_server.py       # http://localhost:8765 — weights/v2/student ve weights/v1/laya-cross-ft gerekir
+python demo_server.py       # http://localhost:8765 — weights/v3/student ve weights/v1/laya-cross-ft gerekir
+STUDENT=weights/v2/student python demo_server.py   # v2 ile karşılaştırmak için
 ```
 
 ## Çalıştırma
@@ -148,10 +202,12 @@ python qgen.py              # v2 kavram havuzu
 python teacher_concepts.py  # yeni kavramları öğretmene etiketlet (~15 dk)
 bash run_v2.sh              # E1-E3
 QSET=concepts TARGET=teacher_f EPOCHS=8 OUT=ckpt/e4.pt python train_student.py   # v2
+bash run_v3.sh              # v3a / v3b (v2'den başlatılır)
 python per_question.py ckpt/a.pt ckpt/b.pt   # görülmemiş sorularda soru bazında AUC
 python save_weights.py      # ckpt -> weights/<VERSION>/ (tek başına yüklenebilir)
 ```
 
-Kayıtlı ağırlıklar: `weights/v1/student`, `weights/v1/laya-cross-ft` (`laya.load` ile açılır), `weights/v2/student`.
-Öğrenciyi yüklemek: `models.load_student("weights/v2/student")`.
+Kayıtlı ağırlıklar (her sürüm ayrı klasörde, `SHA256SUMS` ile): `weights/v1/student`, `weights/v1/laya-cross-ft`
+(`laya.load` ile açılır), `weights/v2/student` (tek vektör), `weights/v3/student` (token vektörleri).
+Öğrenciyi yüklemek: `models.load_student("weights/v3/student")`.
 `teacher_label.py`: hazır Laya ile öğretmen etiketleri (distillation için; `LIMIT=100` ile hızlı ölçüm).

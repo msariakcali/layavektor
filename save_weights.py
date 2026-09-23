@@ -15,7 +15,7 @@ import torch
 from huggingface_hub import snapshot_download
 from safetensors.torch import save_file
 
-from models import DIM, TRAIN_LAYERS, Student, load_laya
+from models import DIM, TRAIN_LAYERS, build, load_laya, read_ckpt
 
 VERSION = os.environ.get("VERSION", "v1")
 STUDENT_CKPT = os.environ.get("STUDENT_CKPT", "ckpt/student_truth.pt")
@@ -36,18 +36,19 @@ def tensors(sd):
 
 
 # ------------------------------------------------------------------ öğrenci
+arch, state = read_ckpt(STUDENT_CKPT)
 agent = load_laya()
 enc = agent.model.encoder.float()
-student = Student(enc)
-res = student.load_state_dict(torch.load(STUDENT_CKPT), strict=False)
+student = build(arch, enc, agent.tok)
+res = student.load_state_dict(state, strict=False)
 assert not res.unexpected_keys
 sdir = os.path.join(out, "student")
 os.makedirs(sdir, exist_ok=True)
 save_file(tensors(student.state_dict()), os.path.join(sdir, "student.safetensors"))
 enc.config.save_pretrained(os.path.join(sdir, "encoder"))
 agent.tok.save_pretrained(os.path.join(sdir, "tokenizer"))
-json.dump({"dim": DIM, "train_layers": TRAIN_LAYERS, "base": base, "source_ckpt": STUDENT_CKPT, "note": NOTE,
-           "logit": "d @ q[:-1] + q[-1]; P = sigmoid(logit)"},
+json.dump({"arch": student.arch, "dim": DIM, "train_layers": TRAIN_LAYERS, "base": base, "source_ckpt": STUDENT_CKPT,
+           "note": NOTE, "model": type(student).__name__},
           open(os.path.join(sdir, "meta.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
 del agent, student, enc
 torch.cuda.empty_cache()

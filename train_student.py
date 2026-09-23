@@ -6,6 +6,8 @@ TARGET=truth   hedef gerçek cevaplar
 TARGET=teacher v2'de yeni kavramların hedefi ince ayarlı cross-encoder'dan (etiketsiz hücreler maskelenir);
                bank kavramları insan etiketli kabul edilir, gerçek cevaptan kalır
 LEX=1          öz-denetimli yardımcı sorular: "Metinde 'X' kelimesi geçiyor mu?" (etiket metinden gelir)
+MODEL=single   tek vektör (v1/v2) | multi: sadece token vektörleri (v3a) | hybrid: ikisi birlikte (v3b)
+INIT=<ckpt>    eğitime bu ckpt'deki ağırlıklardan başla (ör. v2); eşleşmeyen yeni katmanlar sıfırdan
 
 Her adımda bir grup ilan ile soruların tamamı birlikte işlenir: [B ilan x Q soru] logit matrisi,
 ikili çapraz entropi (log score, strictly proper -> kalibrasyonu ödüllendirir).
@@ -20,7 +22,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
-from models import DOC_LEN, Q_LEN, TRAIN_LAYERS, Student, freeze_bottom, load_laya, tokenize, trainable_state
+from models import DOC_LEN, Q_LEN, TRAIN_LAYERS, build, freeze_bottom, load_laya, read_ckpt, tokenize, trainable_state
 
 EPOCHS = int(os.environ.get("EPOCHS", 3))
 BATCH = int(os.environ.get("BATCH", 32))
@@ -28,7 +30,9 @@ QSET = os.environ.get("QSET", "bank")
 TARGET = os.environ.get("TARGET", "truth")
 LEX = int(os.environ.get("LEX", 0))
 N_LEX, LEX_WEIGHT = 24, 0.5
-OUT = os.environ.get("OUT", "ckpt/student_%s_%s%s.pt" % (QSET, TARGET, "_lex" if LEX else ""))
+MODEL = os.environ.get("MODEL", "single")
+INIT = os.environ.get("INIT")
+OUT = os.environ.get("OUT", "ckpt/student_%s_%s_%s%s.pt" % (MODEL, QSET, TARGET, "_lex" if LEX else ""))
 torch.manual_seed(0)
 random.seed(0)
 
@@ -37,7 +41,12 @@ tok, enc = agent.tok, agent.model.encoder
 del agent.model.head, agent.model.scorer, agent.model.act_head
 enc.float()
 freeze_bottom(enc, TRAIN_LAYERS)
-model = Student(enc).cuda()
+model = build({"type": MODEL}, enc, tok).cuda()
+if INIT:
+    own = model.state_dict()
+    init = {k: v for k, v in read_ckpt(INIT)[1].items() if k in own}   # multi'de v2'nin tek vektör katmanları yok
+    model.load_state_dict(init, strict=False)
+    print("başlangıç: %s (%d tensör)" % (INIT, len(init)), flush=True)
 
 docs = [json.loads(l)["text"] for l in open("data/train.jsonl", encoding="utf-8")]
 if QSET == "bank":
@@ -87,7 +96,7 @@ def masked_bce(logits, y):
 
 
 enc_params = [p for p in enc.parameters() if p.requires_grad]
-head_params = list(model.dproj.parameters()) + list(model.qproj.parameters())
+head_params = [p for n, p in model.named_parameters() if p.requires_grad and not n.startswith("enc.")]
 opt = torch.optim.AdamW([{"params": enc_params, "lr": 3e-5}, {"params": head_params, "lr": 1e-3}], weight_decay=0.01)
 steps = EPOCHS * (len(docs) // BATCH)
 sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=[3e-5, 1e-3], total_steps=steps, pct_start=0.1)
@@ -108,12 +117,13 @@ for ep in range(EPOCHS):
             lex_texts, lex_y = lexical(idx)
             q_texts += lex_texts
         with torch.autocast("cuda", dtype=torch.bfloat16):
-            d = model.docs(*tokenize(tok, [docs[j] for j in idx], DOC_LEN))
-            q = model.questions(*tokenize(tok, q_texts, Q_LEN))
-        logits = Student.logits(d, q)
-        loss = masked_bce(logits[:, :len(TEXTS)], y)
-        if LEX:
-            loss = loss + LEX_WEIGHT * F.binary_cross_entropy_with_logits(logits[:, len(TEXTS):], lex_y.cuda())
+            d = model.encode_docs(*tokenize(tok, [docs[j] for j in idx], DOC_LEN))
+            q = model.encode_questions(*tokenize(tok, q_texts, Q_LEN))
+        loss = 0.0
+        for logits in model.train_logits(d, q):   # hybrid: tek yol, token yolu ve birleşim ayrı ayrı cevap verir
+            loss = loss + masked_bce(logits[:, :len(TEXTS)], y)
+            if LEX:
+                loss = loss + LEX_WEIGHT * F.binary_cross_entropy_with_logits(logits[:, len(TEXTS):], lex_y.cuda())
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(enc_params + head_params, 1.0)
@@ -125,5 +135,5 @@ for ep in range(EPOCHS):
             print("  ep %d adım %d/%d kayıp %.4f  (%.0f sn)" % (ep + 1, step, steps, run, time.time() - t0), flush=True)
 
 os.makedirs("ckpt", exist_ok=True)
-torch.save(trainable_state(model), OUT)
+torch.save({"arch": model.arch, "state": trainable_state(model)}, OUT)
 print("kaydedildi: %s  toplam %.0f sn" % (OUT, time.time() - t0))

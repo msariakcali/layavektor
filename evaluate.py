@@ -15,7 +15,7 @@ import numpy as np
 import torch
 from sklearn.metrics import average_precision_score, roc_auc_score
 
-from models import DOC_LEN, Q_LEN, Student, load_laya, tokenize
+from models import DIM, DOC_LEN, Q_LEN, load_trained, tokenize
 
 CKPT = os.environ.get("CKPT", "ckpt/student_truth.pt")
 Q = json.load(open("data/questions.json", encoding="utf-8"))
@@ -28,59 +28,71 @@ heldout = np.array([q["heldout"] for q in Q])
 # ------------------------------------------------------------------ öğrenci
 @torch.inference_mode()
 def student_scores():
-    agent = load_laya()
-    tok, enc = agent.tok, agent.model.encoder
-    enc.float()
-    model = Student(enc).cuda()
-    missing = model.load_state_dict(torch.load(CKPT), strict=False)
-    assert not missing.unexpected_keys, missing.unexpected_keys
-    model.eval()
+    """-> ({sistem adı: {söyleniş: P [ilan, soru]}}, süre ölçümleri). Hybrid'de iki yol ayrıca raporlanır."""
+    model, tok = load_trained(CKPT)
+    arch = model.arch["type"]
 
-    def run(fn, texts, max_len, bs=64):
+    def encode(fn, texts, max_len, bs=64):
         out = []
         for i in range(0, len(texts), bs):
             with torch.autocast("cuda", dtype=torch.bfloat16):
                 out.append(fn(*tokenize(tok, texts[i:i + bs], max_len)))
-        return torch.cat(out)
+        return out
+
+    def scores(Dc, Qe, fn=model.score):
+        return torch.cat([fn(d, Qe) for d in Dc])
 
     torch.cuda.synchronize()
     t = time.time()
-    D = run(model.docs, docs, DOC_LEN)
+    Dc = encode(model.encode_docs, docs, DOC_LEN)            # ilan parçaları: indeks
     torch.cuda.synchronize()
     index_sec = time.time() - t
 
-    probs = {}
+    systems = {"student": {}}
+    if arch == "hybrid":
+        systems.update({"student_single_path": {}, "student_token_path": {}})
     for v in (0, 2):
-        qv = run(model.questions, [q["texts"][v] for q in Q], Q_LEN)
-        probs[v] = torch.sigmoid(Student.logits(D, qv)).cpu().numpy()
+        Qe = encode(model.encode_questions, [q["texts"][v] for q in Q], Q_LEN, bs=len(Q))[0]
+        systems["student"][v] = torch.sigmoid(scores(Dc, Qe)).cpu().numpy()
+        if arch == "hybrid":
+            single = lambda d, q: model._paths(d, q)[0]
+            token = lambda d, q: model._paths(d, q)[1]
+            systems["student_single_path"][v] = torch.sigmoid(scores(Dc, Qe, single)).cpu().numpy()
+            systems["student_token_path"][v] = torch.sigmoid(scores(Dc, Qe, token)).cpu().numpy()
 
-    # sorgu anı: tek soru vektörü + tüm indeksle iç çarpım + ilk 10
+    # sorgu anı: tek soru kodlama + tüm indeksle skor + ilk 10
     lat = []
     for i in range(30):
         torch.cuda.synchronize()
         t = time.time()
         with torch.autocast("cuda", dtype=torch.bfloat16):
-            qv = model.questions(*tokenize(tok, [Q[i % len(Q)]["texts"][0]], Q_LEN))
-        torch.sigmoid(Student.logits(D, qv)).squeeze(1).topk(10)
+            Qe = model.encode_questions(*tokenize(tok, [Q[i % len(Q)]["texts"][0]], Q_LEN))
+        torch.sigmoid(scores(Dc, Qe)).squeeze(1).topk(10)
         torch.cuda.synchronize()
         lat.append(time.time() - t)
-    # 1M ilanlık indeks (rastgele vektörler): sadece iç çarpım + ilk 10 süresi
-    big = torch.randn(1_000_000, D.shape[1], device="cuda", dtype=torch.float16)
-    qh = qv.half()
-    for _ in range(3):
-        (big @ qh[:, :-1].T).squeeze(1).topk(10)
-    torch.cuda.synchronize()
-    t = time.time()
-    for _ in range(20):
-        (big @ qh[:, :-1].T).squeeze(1).topk(10)
-    torch.cuda.synchronize()
-    scan_1m = (time.time() - t) / 20
     timing = {"index_sec_2000_docs": index_sec, "index_ms_per_doc": 1000 * index_sec / len(docs),
-              "query_ms_2000_docs": 1000 * float(np.median(lat[5:])), "scan_ms_1M_docs": 1000 * scan_1m,
-              "index_bytes_per_doc": int(D.shape[1] * 2)}
-    del agent, model, big
+              "query_ms_2000_docs": 1000 * float(np.median(lat[5:]))}
+    if arch == "single":
+        timing["index_bytes_per_doc"] = DIM * 2
+        # 1M ilanlık indeks (rastgele vektörler): sadece iç çarpım + ilk 10 süresi
+        big = torch.randn(1_000_000, DIM, device="cuda", dtype=torch.float16)
+        qh = Qe["vec"].half()
+        for _ in range(3):
+            (big @ qh[:, :-1].T).squeeze(1).topk(10)
+        torch.cuda.synchronize()
+        t = time.time()
+        for _ in range(20):
+            (big @ qh[:, :-1].T).squeeze(1).topk(10)
+        torch.cuda.synchronize()
+        timing["scan_ms_1M_docs"] = 1000 * (time.time() - t) / 20
+        del big
+    else:
+        n_tok = sum(int(d["mask"].sum()) for d in Dc) / len(docs)
+        timing["tokens_per_doc"] = n_tok
+        timing["index_bytes_per_doc"] = int(n_tok * model.arch["tdim"] * 2 + (DIM * 2 if arch == "hybrid" else 0))
+    del model
     torch.cuda.empty_cache()
-    return probs, timing
+    return systems, timing
 
 
 # ------------------------------------------------------------------ metrikler
@@ -145,7 +157,7 @@ splits = {"A_seen": (~heldout, 0), "B_seen_newphrase": (~heldout, 2), "C_heldout
 report = {"single": {}, "composite": {}, "timing": {}}
 
 S, report["timing"]["student"] = student_scores()
-systems = {"student": (S, True)}
+systems = {name: (P, True) for name, P in S.items()}
 if os.path.exists("data/cross_test_v0.npy"):
     systems["laya_cross_ft"] = ({v: np.load("data/cross_test_v%d.npy" % v) for v in (0, 2)}, True)
     report["timing"]["laya_cross_ft"] = json.load(open("data/cross_timing.json"))

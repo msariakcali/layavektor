@@ -71,7 +71,7 @@
 <body>
 <div class="wrap">
   <h1>Karar İndeksi — deneme</h1>
-  <p class="sub">v2 öğrenci modeli · 2.000 test ilanı (eğitimde hiç görülmedi) · her koşul bir evet/hayır sorusu, olasılıklar çarpılır</p>
+  <p class="sub"><span id="model">öğrenci modeli</span> · 2.000 test ilanı (eğitimde hiç görülmedi) · her koşul bir evet/hayır sorusu, olasılıklar çarpılır</p>
 
   <div class="panel">
     <div id="conds"></div>
@@ -106,10 +106,11 @@ const EXAMPLES = [
     ["Hem Kadıköy hem Beşiktaş", [["Ev Kadıköy ilçesinde mi?"], ["Ev Beşiktaş ilçesinde mi?"]]],
     ["Asansörlü ve asansörsüz", [["Binada asansör var mı?"], ["Binada asansör yok mu?"]]],
   ]],
-  ["Görülmemiş kavram (zayıf olması beklenen)", "fail", [
+  ["Görülmemiş kavram (v2 zayıf, v3 çoğunda iyi)", "fail", [
     ["Jeneratör var mı?", [["Jeneratör var mı?"]]],
     ["Sarıyer'de mi?", [["Ev Sarıyer ilçesinde mi?"]]],
     ["Takasa uygun mu?", [["Takasa uygun mu?"]]],
+    ["Klima var mı? (v3'te de zayıf)", [["Klima var mı?"]]],
   ]],
 ];
 
@@ -153,6 +154,7 @@ async function search() {
   const r = await fetch("/api/search", {method: "POST", headers: {"Content-Type": "application/json"},
                                         body: JSON.stringify({conds, top_k: 20})}).then(r => r.json());
   lastConds = conds; lastIds = r.results.map(x => x.i);
+  document.getElementById("model").textContent = r.model;
   const s = document.getElementById("summary");
   s.hidden = false;
   s.innerHTML = `<div class="stats">
