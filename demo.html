@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karar İndeksi</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --good: #1f7a4d; --good-soft: #e3f3ea;
+    --warn: #a4570b; --warn-soft: #fbeedd; --bad: #b3261e; --bad-soft: #fbe5e3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9a94; --line: #34332f;
+      --accent: #8aa8ff; --accent-soft: #232c45; --good: #6fcf9a; --good-soft: #1b3326;
+      --warn: #f0b36b; --warn-soft: #3a2a17; --bad: #f28b82; --bad-soft: #3d1f1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .sub { color: var(--muted); margin: 0 0 20px; font-size: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .cond { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .cond input[type=text] { flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--line); border-radius: 8px;
+                           background: var(--bg); color: var(--ink); font: inherit; }
+  .cond input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .neg { display: flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
+  .neg.on { color: var(--bad); font-weight: 600; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+           padding: 8px 14px; cursor: pointer; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  @media (prefers-color-scheme: dark) { button.primary { color: #10131c; } }
+  button.x { padding: 6px 10px; color: var(--muted); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .examples { margin-top: 14px; display: grid; gap: 8px; }
+  .ex-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: baseline; }
+  .ex-label { font-size: 12px; color: var(--muted); width: 190px; flex-shrink: 0; }
+  .chip { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+          border: none; cursor: pointer; }
+  .chip.fail { background: var(--warn-soft); color: var(--warn); }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .stat .k { font-size: 12px; color: var(--muted); }
+  .stat .v { font-size: 20px; font-weight: 650; font-variant-numeric: tabular-nums; }
+  .banner { margin-top: 12px; padding: 10px 12px; border-radius: 8px; font-size: 14px; }
+  .banner.empty { background: var(--warn-soft); color: var(--warn); }
+  .banner.info { background: var(--accent-soft); color: var(--accent); }
+  .res { border-top: 1px solid var(--line); padding: 12px 0; display: grid; grid-template-columns: 36px 1fr; gap: 12px; }
+  .res:first-child { border-top: none; }
+  .rank { color: var(--muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .scores { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  .total { font-weight: 700; font-variant-numeric: tabular-nums; }
+  .bar { width: 120px; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--accent); }
+  .p { font-size: 12px; padding: 2px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; }
+  .p.hi { background: var(--good-soft); color: var(--good); }
+  .p.mid { background: var(--warn-soft); color: var(--warn); }
+  .p.lo { background: var(--bad-soft); color: var(--bad); }
+  .laya { font-size: 12px; color: var(--muted); }
+  .text { font-size: 14px; }
+  details { margin-top: 4px; font-size: 13px; color: var(--muted); }
+  summary { cursor: pointer; }
+  .muted { color: var(--muted); font-size: 13px; }
+  @media (max-width: 640px) { .ex-label { width: 100%; } .bar { width: 70px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Karar İndeksi — deneme</h1>
+  <p class="sub">v2 öğrenci modeli · 2.000 test ilanı (eğitimde hiç görülmedi) · her koşul bir evet/hayır sorusu, olasılıklar çarpılır</p>
+
+  <div class="panel">
+    <div id="conds"></div>
+    <div class="row">
+      <button onclick="addCond()">+ koşul ekle</button>
+      <button class="primary" onclick="search()">Ara</button>
+      <span class="muted">"değil" işaretli koşul tersine çevrilir (1 − P)</span>
+    </div>
+    <div class="examples" id="examples"></div>
+  </div>
+
+  <div class="panel" id="summary" hidden></div>
+  <div class="panel" id="results" hidden></div>
+</div>
+
+<script>
+const EXAMPLES = [
+  ["Eğitimde görülen sorular", "", [
+    ["Deniz manzarası + metro", [["Evin deniz manzarası var mı?"], ["Metroya yakın mı?"]]],
+    ["Kadıköy, kiralık, 30 bin altı", [["Ev Kadıköy ilçesinde mi?"], ["Kiralık ve aylık kirası 30 bin TL'nin altında mı?"]]],
+    ["Asansörlü, 3+1 ve üstü, eşyalı değil", [["Binada asansör var mı?"], ["Daire en az 3+1 mi?"], ["Ev eşyalı mı?", true]]],
+  ]],
+  ["Yeni söyleniş (test ifadesi)", "", [
+    ["Bu ev deniz manzaralı mı?", [["Bu ev deniz manzaralı mı?"]]],
+    ["Hemen taşınılabilir durumda boş mu?", [["Hemen taşınılabilir durumda boş mu?"]]],
+  ]],
+  ["Görülmemiş sayı", "", [
+    ["120 m² üstü", [["Daire 120 metrekareden büyük mü?"]]],
+    ["8 milyon altı satılık", [["Satılık ve fiyatı 8 milyon TL'nin altında mı?"]]],
+  ]],
+  ["Sonuç olmaması gereken", "", [
+    ["Hem Kadıköy hem Beşiktaş", [["Ev Kadıköy ilçesinde mi?"], ["Ev Beşiktaş ilçesinde mi?"]]],
+    ["Asansörlü ve asansörsüz", [["Binada asansör var mı?"], ["Binada asansör yok mu?"]]],
+  ]],
+  ["Görülmemiş kavram (zayıf olması beklenen)", "fail", [
+    ["Jeneratör var mı?", [["Jeneratör var mı?"]]],
+    ["Sarıyer'de mi?", [["Ev Sarıyer ilçesinde mi?"]]],
+    ["Takasa uygun mu?", [["Takasa uygun mu?"]]],
+  ]],
+];
+
+let lastConds = [], lastIds = [];
+
+function addCond(text = "", neg = false) {
+  const div = document.createElement("div");
+  div.className = "cond";
+  div.innerHTML = `<input type="text" placeholder="Evet/hayır sorusu, ör. Balkonu var mı?">
+    <label class="neg"><input type="checkbox"> değil</label>
+    <button class="x" title="kaldır">✕</button>`;
+  const inp = div.querySelector("input[type=text]"), cb = div.querySelector("input[type=checkbox]");
+  inp.value = text; cb.checked = neg;
+  const paint = () => div.querySelector(".neg").classList.toggle("on", cb.checked);
+  cb.onchange = paint; paint();
+  inp.onkeydown = e => { if (e.key === "Enter") search(); };
+  div.querySelector(".x").onclick = () => { div.remove(); if (!document.querySelector(".cond")) addCond(); };
+  document.getElementById("conds").appendChild(div);
+  return inp;
+}
+
+function setConds(list) {
+  document.getElementById("conds").innerHTML = "";
+  list.forEach(([t, n]) => addCond(t, !!n));
+  search();
+}
+
+function readConds() {
+  return [...document.querySelectorAll(".cond")].map(d => ({
+    text: d.querySelector("input[type=text]").value, neg: d.querySelector("input[type=checkbox]").checked
+  })).filter(c => c.text.trim());
+}
+
+const pct = p => (p * 100).toFixed(p >= 0.995 || p < 0.005 ? 0 : 1) + "%";
+const cls = p => p >= 0.7 ? "hi" : p >= 0.3 ? "mid" : "lo";
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+
+async function search() {
+  const conds = readConds();
+  if (!conds.length) return;
+  const r = await fetch("/api/search", {method: "POST", headers: {"Content-Type": "application/json"},
+                                        body: JSON.stringify({conds, top_k: 20})}).then(r => r.json());
+  lastConds = conds; lastIds = r.results.map(x => x.i);
+  const s = document.getElementById("summary");
+  s.hidden = false;
+  s.innerHTML = `<div class="stats">
+      <div class="stat"><div class="k">Tahmini eşleşme (Σ P)</div><div class="v">${r.expected_count.toFixed(1)}</div></div>
+      <div class="stat"><div class="k">P ≥ %50 olan ilan</div><div class="v">${r.n_over_50} / ${r.n_docs}</div></div>
+      <div class="stat"><div class="k">En yüksek olasılık</div><div class="v">${pct(r.max)}</div></div>
+      <div class="stat"><div class="k">Soru kodlama</div><div class="v">${r.enc_ms} ms</div></div>
+      <div class="stat"><div class="k">${r.n_docs} ilanı tarama</div><div class="v">${r.scan_ms} ms</div></div>
+    </div>
+    ${r.max < 0.5 ? `<div class="banner empty">Hiçbir ilan %50'yi geçmiyor — model "bu koşullara uyan ilan yok" diyor.</div>` : ""}
+    <div class="row" style="margin-top:12px"><button onclick="verify()">Gösterilen sonuçları Laya ile doğrula</button>
+      <span class="muted" id="vinfo">tam cross-encoder her (ilan, koşul) çiftini ayrı okur</span></div>`;
+  const box = document.getElementById("results");
+  box.hidden = false;
+  box.innerHTML = r.results.map((x, k) => `<div class="res" data-i="${x.i}">
+      <div class="rank">${k + 1}</div>
+      <div>
+        <div class="scores">
+          <span class="total">${pct(x.score)}</span><span class="bar"><i style="width:${x.score * 100}%"></i></span>
+          ${x.per.map((p, j) => `<span class="p ${cls(p)}" title="${esc(conds[j].text)}">${conds[j].neg ? "değil: " : ""}${esc(conds[j].text.slice(0, 28))} ${pct(p)}</span>`).join("")}
+          <span class="laya"></span>
+        </div>
+        <div class="text">${esc(x.text)}</div>
+        <details><summary>gerçek alanlar</summary>${Object.entries(x.fields).map(([k, v]) =>
+          `<b>${k}:</b> ${esc(Array.isArray(v) ? v.join(", ") : v)}`).join(" · ")}</details>
+      </div></div>`).join("");
+}
+
+async function verify() {
+  const info = document.getElementById("vinfo");
+  info.textContent = "Laya çalışıyor… (ilk seferde model yükleniyor)";
+  const r = await fetch("/api/verify", {method: "POST", headers: {"Content-Type": "application/json"},
+                                        body: JSON.stringify({conds: lastConds, ids: lastIds})}).then(r => r.json());
+  info.textContent = `Laya: ${r.pairs} çift ${r.ms.toFixed(0)} ms · tüm ${2000} ilanı bu yolla taramak ≈ ${r.full_scan_estimate_sec.toFixed(1)} sn`;
+  for (const [i, v] of Object.entries(r.cross)) {
+    const el = document.querySelector(`.res[data-i="${i}"] .laya`);
+    if (el) el.innerHTML = `Laya: <span class="p ${cls(v.score)}">${pct(v.score)}</span>`;
+  }
+}
+
+const ex = document.getElementById("examples");
+for (const [label, kind, items] of EXAMPLES) {
+  const g = document.createElement("div");
+  g.className = "ex-group";
+  g.innerHTML = `<span class="ex-label">${label}</span>`;
+  for (const [name, conds] of items) {
+    const b = document.createElement("button");
+    b.className = "chip" + (kind ? " " + kind : "");
+    b.textContent = name;
+    b.onclick = () => setConds(conds);
+    g.appendChild(b);
+  }
+  ex.appendChild(g);
+}
+addCond("Evin deniz manzarası var mı?");
+addCond("Metroya yakın mı?");
+</script>
+</body>
+</html>
