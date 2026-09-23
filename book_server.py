@@ -1,31 +1,26 @@
 """Kitap arama denemesi (eğitimsiz): PDF -> paragraflar -> dört yöntemle arama, yan yana.
 
   python book_server.py  ->  http://localhost:8766
-  BOOKS_DIR=<klasör>     içindeki tüm PDF'ler indekslenir (varsayılan: bu klasörün bir üstü)
+  BOOKS_DIR=<klasör>     içindeki tüm PDF'ler indekslenir (varsayılan: bu klasörün bir üstündeki PDF'ler)
 
 Yöntemler (hiçbiri bu kitapla ya da kitap göreviyle eğitilmedi):
   bm25        kelime araması (Türkçe için kelimelerin ilk 5 harfi)
   bge         bge-m3 embedding, kosinüs benzerliği — standart RAG
   v3          bizim öğrenci (weights/v3), sadece emlak ilanlarıyla eğitildi; olasılıkları bu alanda kalibre değil
   laya        bge-m3'ün ilk 30 sonucu, hazır Laya (ince ayarsız) ile "bu metin soruyu cevaplıyor mu?" sıralaması
-Paragraflar ve indeksler data/books/ altında önbelleğe alınır (git dışı).
+Paragraflar (library.py) ve indeksler data/books/ altında önbelleğe alınır (git dışı).
 """
-import glob
-import hashlib
-import json
 import os
 import re
 import sys
 import threading
 import time
-from collections import Counter
 
 sys.stdout.reconfigure(encoding="utf-8")
 sys.stderr.reconfigure(encoding="utf-8")
 HERE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(HERE)
 
-import fitz
 import numpy as np
 import torch
 from fastapi import FastAPI
@@ -33,50 +28,12 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from rank_bm25 import BM25Okapi
 
+import library
+from library import norm
 from models import DOC_LEN, Q_LEN, load_laya, load_student, tokenize
 
-BOOKS_DIR = os.environ.get("BOOKS_DIR", os.path.dirname(HERE))
 STUDENT = os.environ.get("STUDENT", "weights/v3/student")
-CHUNK_WORDS, STRIDE = 120, 90          # ~250 token: v3'ün 256 token sınırına sığar
 RERANK_K = 30
-
-# ------------------------------------------------------------------ PDF -> paragraflar
-_TR = str.maketrans({"İ": "i", "I": "ı"})
-
-
-def norm(s):
-    return s.translate(_TR).lower()
-
-
-def pdf_chunks(path):
-    doc = fitz.open(path)
-    pages = [p.get_text() for p in doc]
-    # sayfa başlığı/altlığı: birçok sayfada tekrar eden satırlar
-    freq = Counter(norm(l.strip()) for t in pages for l in set(t.split("\n")) if l.strip())
-    headers = {l for l, c in freq.items() if c >= max(5, len(pages) // 10)}
-    words = []   # (kelime, sayfa)
-    for pno, t in enumerate(pages, 1):
-        if len(re.findall(r"(?:\.\s*){5,}", t)) >= 5:   # içindekiler sayfası: başlıklar arama sonucu olarak işe yaramaz
-            continue
-        lines = []
-        for l in t.split("\n"):
-            s = l.strip()
-            if (not s or s in "•·-–" or re.fullmatch(r"[\divxlcIVXLC]{1,4}", s) or re.search(r"(\.\s*){5,}", s)
-                    or norm(s) in headers):
-                continue
-            lines.append(s)
-        text = re.sub(r"­\s*", "", " ".join(lines))          # yumuşak tire: "yürütme­ lere"
-        text = re.sub(r"(\w)- (\w)", r"\1\2", text)               # satır sonunda bölünmüş kelimeler
-        words += [(w, pno) for w in text.split()]
-    chunks = []
-    for i in range(0, max(1, len(words) - CHUNK_WORDS // 3), STRIDE):
-        part = words[i:i + CHUNK_WORDS]
-        text = " ".join(w for w, _ in part)
-        if sum(ch.isalpha() for ch in text) < 0.6 * len(text):   # içindekiler / tablo artığı
-            continue
-        chunks.append({"book": os.path.splitext(os.path.basename(path))[0], "page": part[0][1],
-                       "page_end": part[-1][1], "text": text})
-    return chunks
 
 
 def stem(w):
@@ -88,16 +45,9 @@ def bm25_tokens(t):
 
 
 # ------------------------------------------------------------------ yükleme ve indeksleme
-pdfs = sorted(glob.glob(os.path.join(BOOKS_DIR, "*.pdf")))
-assert pdfs, "PDF bulunamadı: %s" % BOOKS_DIR
-key = hashlib.md5("|".join("%s:%d" % (p, os.path.getsize(p)) for p in pdfs).encode()).hexdigest()[:10]
-cache = os.path.join("data", "books", key)
-os.makedirs(cache, exist_ok=True)
-if os.path.exists(os.path.join(cache, "chunks.json")):
-    CHUNKS = json.load(open(os.path.join(cache, "chunks.json"), encoding="utf-8"))
-else:
-    CHUNKS = [c for p in pdfs for c in pdf_chunks(p)]
-    json.dump(CHUNKS, open(os.path.join(cache, "chunks.json"), "w", encoding="utf-8"), ensure_ascii=False)
+# varsayılan: sadece bu klasörün bir üstündeki PDF'ler (eski davranış; tüm kütüphane 4 GB GPU'da bge + v3 + Laya ile
+# sığmıyor, onun için match_server.py). BOOKS_DIR ile başka klasör verilebilir.
+pdfs, CHUNKS, cache, _ = library.load(pats=None if os.environ.get("BOOKS_DIR") else [library.DEFAULT_PATTERNS[0]])
 TEXTS = [c["text"] for c in CHUNKS]
 print("%d PDF, %d paragraf" % (len(pdfs), len(CHUNKS)), flush=True)
 TIMING = {}

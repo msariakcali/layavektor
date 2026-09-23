@@ -131,6 +131,58 @@ bu kitapla ya da kitap göreviyle eğitilmedi.** 7 kitap içi + 2 kitap dışı 
 umut verici bir sinyal veriyor. Kitap görevinde eğitilmiş bir v3'ün hedefi: sıralamada bge-m3'e yetişmek,
 "yok" tespitinde onu geçmek.
 
+### Kitap eşleştirme denemesi (eğitimsiz): "ne okusam?"
+
+`match_server.py` (http://localhost:8767): kullanıcı isteğini ("bilimle alakalı ama iç dünyamla da ilgili bir şey")
+kriterlere ayırır, her paragrafa kriter başına "Bu metin X ile ilgili mi?" sorar ve kitap/bölüm düzeyinde birleştirir:
+kriter kapsamı, kriterlerin aynı paragrafta birlikte geçmesi, uyan paragraf sayısı, "uymuyor / uygun kitap yok" kararı,
+kanıt paragrafları. Model yine sadece emlakla eğitilmiş v3; her kriter 4 soru kalıbıyla sorulup ortalanıyor.
+
+| Bulgu | Ayrıntı |
+|---|---|
+| Konu bölgeleme çoğunlukla doğru | konusu belli 7 kriterin 6'sında en yoğun bölüm doğru (ekoloji → 15, Popper → 10, kuşkuculuk → 4, paradigma → 11) |
+| Kitap dışı konular reddediliyor | "futbol", "aşk / ilişkiler": hiçbir paragraf eşiği geçmiyor → "uygun kitap yok" |
+| Sıralama iyi, olasılık seviyesi güvenilmez | "Popper ve yanlışlanabilirlik": en iyi kanıt tam isabet (s.172) ama birlikte olasılığı 0,49; sonuç eşiğe çok duyarlı |
+| Olasılık toplamı kullanılamıyor | kalibre olmayan küçük olasılıklar birikiyor ("futbol" en fazla %11, toplam ~4,5 paragraf) → şimdilik eşikli sayım |
+| Soru kalıbına çok duyarlı | aynı kavram farklı kalıpla %3–%64 arası kapsam |
+| Anlamadıkları | üslup ("akademik olmasın"), soyut kavramlar ("iç dünya"), bazı açık konular ("çevre etiği" 15. bölümü kaçırıyor; bge-m3 buluyor) |
+
+Çıkarım: arayüz ve birleştirme matematiği çalışıyor; eksik olan **bu tür konu/üslup kararlarında kalibre bir model**.
+Kalibre bir modelde eşik %50'de sabit kalabilmeli ve olasılık toplamı doğrudan "kaç paragraf" olmalı — bu, eğitimin
+(konu kararları için A–C aşamaları) başarı ölçütü olur.
+
+### Kütüphane: 38 kitap (eğitimsiz)
+
+`books/kitap_pdf` altındaki 48 PDF + bilim felsefesi kitabı: 1 PDF metinsiz (taranmış), 10'u aynı kitabın başka baskısı
+ya da ciltlerin birleşik hali (`library.py` metin örtüşmesiyle ayıklıyor) → **38 kitap, 19.319 paragraf**, 7 dil
+(30 Türkçe; İngilizce, Almanca, Fransızca, Farsça, Kürtçe, Bulgarca çeviriler). Konu olarak büyük çoğunluğu aynı
+yayınevinin dini kitapları — kitaplar birbirine çok benzediği için "hangi kitap?" zor bir test.
+İndeks: ilk açılışta 8 dk, v3 kelime vektörleri 8 bit ile 632 MB; toplam GPU 2,4 GB; bir istek ~260 ms.
+
+`eval_match.py`: başlıktan bilinen 20 konu (başlıktaki kelimeler kullanılmadan, ör. "kalbin sertleşmesi" →
+Kalp Katılığının Zararları) + kütüphanede olmayan 5 konu:
+
+| | v3 (emlakla eğitilmiş) | bge-m3 |
+|---|---|---|
+| Doğru kitap 1. sırada | %40 | **%65** |
+| Doğru kitap ilk 3'te | %70 | **%80** |
+| MRR | 0,57 | **0,75** |
+| Doğru kitaba "uymuyor" dememe | %65 | — (karar vermiyor) |
+| Olmayan konuya "yok" | 3/5 | eşik yok; bu sette kitaptaki konuların en düşük skoru (0,523) olmayanların en yükseğinden (0,501) az farkla büyük |
+
+* Sıralamada bge-m3 açık ara önde; v3 bazı konularda tamamen kaçırıyor ("kadınlara öğütler" 27., "En'am suresinin
+  açıklaması" 12.).
+* Kalibrasyon sorunu kullanıcıya yanlış cevap olarak yansıyor: "oruç ve ramazan" isteğinde en iyi kanıtların hepsi
+  "Ramazan ve Oruç" kitabından, ama "oruç" kriteri bu paragraflarda %46–50'de kalıyor → "uygun kitap yok".
+  "Kalbin sertleşmesi" doğru kitabı 1. sıraya koyuyor ama o kitaba "uymuyor" diyor.
+* Diller arası eşleşme kendiliğinden çalışıyor: "iman esasları dersleri" → İngilizce "Our Creed and Methodology" 1. sırada.
+* bge-m3 de "yok" için bu küçük sette ayrım yapabiliyor gibi, ama fark çok dar (0,02) ve eşik ancak sonradan,
+  bu verinin kendisine bakarak seçilebilir.
+
+Çıkarım: kalibre kararın **mekanizması** (kitap/bölüm düzeyinde oran, "yok", birleşik kriter) hazır ve hızlı; ama
+emlakla eğitilmiş v3 hem sıralamada bge-m3'ün gerisinde hem olasılık seviyesinde güvenilmez. Konu kararları için
+eğitim (Aşama 2) olmadan bu arayüz kullanıcıya yanlış "yok" diyebilir.
+
 ## 8. Sonraki adımlar
 
 Ayrıntılı plan ve "kalibre RAG" değerlendirmesi: `KALIBRE_RAG.md`.
@@ -171,6 +223,9 @@ karar modeli" kombinasyonu pek çalışılmamış; iddia etmeden önce detaylı 
 | `run_v2.sh`, `run_v3.sh` | Deney dizileri |
 | `demo_server.py` + `demo.html` | Emlak deneme arayüzü (http://localhost:8765) |
 | `book_server.py` + `book.html` | Kitap arama denemesi (http://localhost:8766) |
+| `match_server.py` + `match.html` | Kitap eşleştirme denemesi: istek → kriterler → kitap/bölüm uyumu (http://localhost:8767) |
+| `library.py`, `books.json` | PDF → paragraf, başlık, dil, bölümler, tekrar baskı ayıklama (kitap başına önbellek); elle düzeltilmiş başlık/bölümler |
+| `eval_match.py` | Kitap eşleştirme ölçümü (v3 vs bge-m3, "yok" testi) → `results/match_eval.json` |
 | `results/` | Tüm değerlendirme raporları |
 
 **Ağırlıklar** (repoda değil, yerelde `weights/`, her sürüm ayrı klasörde ve `SHA256SUMS` ile):
@@ -180,6 +235,7 @@ Yüklemek: `models.load_student("weights/v3/student")`.
 ```bash
 python demo_server.py                  # emlak denemesi (v3)
 python book_server.py                  # kitap denemesi; BOOKS_DIR içindeki tüm PDF'ler
+python match_server.py                 # kitap eşleştirme ("ne okusam?")
 ```
 
 Repo: https://github.com/msariakcali/layavektor

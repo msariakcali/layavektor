@@ -1,0 +1,546 @@
+{
+ "cases": [
+  {
+   "wish": "oruç tutmanın hükümleri",
+   "criteria": [
+    "oruç tutmanın hükümleri"
+   ],
+   "gold": [
+    "HHRO_TBY_1b",
+    "ramazan_mektubu_full"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "HHRO_TBY_1b",
+    "haydi",
+    "ramazan_mektubu_full"
+   ],
+   "bge_top3": [
+    "HHRO_TBY_1b",
+    "ramazan_mektubu_full",
+    "Tasavvuf_TBY_Full"
+   ],
+   "ms": 4827.3,
+   "bge_top_score": 0.675
+  },
+  {
+   "wish": "kalbin sertleşmesi ve katılaşması",
+   "criteria": [
+    "kalbin sertleşmesi",
+    "katılaşması"
+   ],
+   "gold": [
+    "kalpkatiligi_full"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "kalpkatiligi_full",
+    "Lailaheillah_farsca_210129",
+    "werin_islame2"
+   ],
+   "bge_top3": [
+    "kalpkatiligi_full",
+    "EsmaTBY_1_2_Full",
+    "2_MAKS"
+   ],
+   "ms": 317.9,
+   "bge_top_score": 0.601
+  },
+  {
+   "wish": "sufilik ve tarikat yolu",
+   "criteria": [
+    "sufilik",
+    "tarikat yolu"
+   ],
+   "gold": [
+    "Tasavvuf_TBY_Full",
+    "Rabita_Full"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "Tasavvuf_TBY_Full",
+    "FR_biz_kimiz",
+    "Biz_Kimiz_ve_Ne_Istiyoruz_ENG"
+   ],
+   "bge_top3": [
+    "Tasavvuf_TBY_Full",
+    "Rabita_Full",
+    "VREST_TBY_1b_full"
+   ],
+   "ms": 263.9,
+   "bge_top_score": 0.558
+  },
+  {
+   "wish": "şeyhi zihinde canlandırarak bağlanma",
+   "criteria": [
+    "zihinde canlandırarak bağlanma"
+   ],
+   "gold": [
+    "Rabita_Full"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "Rabita_Full",
+    "Kadir Çüçen - Bilim Felsefesine Giriş",
+    "Hayatin_icinden_TBY_1b_2000_adet_Full"
+   ],
+   "bge_top3": [
+    "Rabita_Full",
+    "EsmaTBY_1_2_Full",
+    "Tasavvuf_TBY_Full"
+   ],
+   "ms": 244.1,
+   "bge_top_score": 0.55
+  },
+  {
+   "wish": "alışverişte ve ticarette ahlak",
+   "criteria": [
+    "alışverişte",
+    "ticarette ahlak"
+   ],
+   "gold": [
+    "TEMN_TBY"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "TEMN_TBY",
+    "13_Nevaikudul_islm",
+    "Biz_Kimiz_ve_Ne_Istiyoruz_ENG"
+   ],
+   "bge_top3": [
+    "TEMN_TBY",
+    "EsmaTBY_1_2_Full",
+    "3_MBKS"
+   ],
+   "ms": 275.9,
+   "bge_top_score": 0.619
+  },
+  {
+   "wish": "bir dilden başka bir dile çeviri yapmak",
+   "criteria": [
+    "dilden başka dile çeviri yapmak"
+   ],
+   "gold": [
+    "Tercume_Bilimi"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "Tercume_Bilimi",
+    "Lailaheillallah_14b",
+    "17_TROM_full"
+   ],
+   "bge_top3": [
+    "Tercume_Bilimi",
+    "VREST_TBY_1b_full",
+    "Kadir Çüçen - Bilim Felsefesine Giriş"
+   ],
+   "ms": 239.8,
+   "bge_top_score": 0.631
+  },
+  {
+   "wish": "kadınlara öğütler",
+   "criteria": [
+    "kadınlara öğütler"
+   ],
+   "gold": [
+    "MHN_TBY_full"
+   ],
+   "v3_rank": 27,
+   "bge_rank": 1,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "Biz_kimiz_Almanca",
+    "kalpkatiligi_full",
+    "Lailaheillallah_14b"
+   ],
+   "bge_top3": [
+    "MHN_TBY_full",
+    "Tasavvuf_TBY_Full",
+    "EsmaTBY_1_2_Full"
+   ],
+   "ms": 262.2,
+   "bge_top_score": 0.582
+  },
+  {
+   "wish": "gençlerle sohbet",
+   "criteria": [
+    "gençlerle sohbet"
+   ],
+   "gold": [
+    "Genclerle_Hasbihal",
+    "7_İbrahimi_Genc"
+   ],
+   "v3_rank": 2,
+   "bge_rank": 3,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "4_YMO",
+    "7_İbrahimi_Genc",
+    "14_SCT"
+   ],
+   "bge_top3": [
+    "4_YMO",
+    "AHAD",
+    "Genclerle_Hasbihal"
+   ],
+   "ms": 271.0,
+   "bge_top_score": 0.539
+  },
+  {
+   "wish": "Allah'ın güzel isimlerinin anlamları",
+   "criteria": [
+    "Allah'ın güzel isimlerinin anlamları"
+   ],
+   "gold": [
+    "EsmaTBY_1_2_Full"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "EsmaTBY_1_2_Full",
+    "Genclerle_Hasbihal",
+    "17_TROM_full"
+   ],
+   "bge_top3": [
+    "EsmaTBY_1_2_Full",
+    "2_MAKS",
+    "Genclerle_Hasbihal"
+   ],
+   "ms": 238.9,
+   "bge_top_score": 0.654
+  },
+  {
+   "wish": "En'am suresinin açıklaması",
+   "criteria": [
+    "En'am suresinin açıklaması"
+   ],
+   "gold": [
+    "VREST_TBY_1b_full"
+   ],
+   "v3_rank": 12,
+   "bge_rank": 1,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "2_GiM",
+    "2_MAKS",
+    "14_SCT"
+   ],
+   "bge_top3": [
+    "VREST_TBY_1b_full",
+    "EsmaTBY_1_2_Full",
+    "9_Ehli_Sunnet_Furkan"
+   ],
+   "ms": 273.2,
+   "bge_top_score": 0.643
+  },
+  {
+   "wish": "âlimler arasındaki görüş ayrılıkları",
+   "criteria": [
+    "âlimler arasındaki görüş ayrılıkları"
+   ],
+   "gold": [
+    "10_İhtilaf_fikhi"
+   ],
+   "v3_rank": 25,
+   "bge_rank": 2,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "2_GiM",
+    "17_TROM_full",
+    "MHN_TBY_full"
+   ],
+   "bge_top3": [
+    "2_GiM",
+    "10_İhtilaf_fikhi",
+    "9_Ehli_Sunnet_Furkan"
+   ],
+   "ms": 252.4,
+   "bge_top_score": 0.597
+  },
+  {
+   "wish": "bilimsel yöntem ve bilginin doğası",
+   "criteria": [
+    "bilimsel yöntem",
+    "bilginin doğası"
+   ],
+   "gold": [
+    "Kadir Çüçen - Bilim Felsefesine Giriş"
+   ],
+   "v3_rank": 1,
+   "bge_rank": 1,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "Kadir Çüçen - Bilim Felsefesine Giriş",
+    "15_Biz_Kimiz",
+    "Tercume_Bilimi"
+   ],
+   "bge_top3": [
+    "Kadir Çüçen - Bilim Felsefesine Giriş",
+    "EsmaTBY_1_2_Full",
+    "VREST_TBY_1b_full"
+   ],
+   "ms": 240.0,
+   "bge_top_score": 0.65
+  },
+  {
+   "wish": "peygamberlerin hepsinin ortak daveti",
+   "criteria": [
+    "peygamberlerin hepsinin ortak daveti"
+   ],
+   "gold": [
+    "17_TROM_full"
+   ],
+   "v3_rank": 3,
+   "bge_rank": 4,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "AD_6_Baski_full",
+    "12_Kavaidul_Erba",
+    "17_TROM_full"
+   ],
+   "bge_top3": [
+    "10_İhtilaf_fikhi",
+    "Lailaheillallah_14b",
+    "13_Nevaikudul_islm"
+   ],
+   "ms": 250.8,
+   "bge_top_score": 0.57
+  },
+  {
+   "wish": "Müslümanların kardeşlik hakları",
+   "criteria": [
+    "Müslümanların kardeşlik hakları"
+   ],
+   "gold": [
+    "3_MBKS"
+   ],
+   "v3_rank": 2,
+   "bge_rank": 1,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "1_MEKS",
+    "3_MBKS",
+    "14_SCT"
+   ],
+   "bge_top3": [
+    "3_MBKS",
+    "9_Ehli_Sunnet_Furkan",
+    "2_MAKS"
+   ],
+   "ms": 243.5,
+   "bge_top_score": 0.618
+  },
+  {
+   "wish": "iman esasları dersleri",
+   "criteria": [
+    "iman esasları dersleri"
+   ],
+   "gold": [
+    "AD_6_Baski_full"
+   ],
+   "v3_rank": 2,
+   "bge_rank": 1,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "Biz_Kimiz_ve_Ne_Istiyoruz_ENG",
+    "AD_6_Baski_full",
+    "15_Biz_Kimiz"
+   ],
+   "bge_top3": [
+    "AD_6_Baski_full",
+    "EsmaTBY_1_2_Full",
+    "15_Biz_Kimiz"
+   ],
+   "ms": 289.5,
+   "bge_top_score": 0.562
+  },
+  {
+   "wish": "dini doğru anlamak için temel kurallar",
+   "criteria": [
+    "dini doğru anlamak için temel kurallar"
+   ],
+   "gold": [
+    "12_Kavaidul_Erba"
+   ],
+   "v3_rank": 5,
+   "bge_rank": 5,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "Kadir Çüçen - Bilim Felsefesine Giriş",
+    "10_İhtilaf_fikhi",
+    "9_Ehli_Sunnet_Furkan"
+   ],
+   "bge_top3": [
+    "9_Ehli_Sunnet_Furkan",
+    "VREST_TBY_1b_full",
+    "EsmaTBY_1_2_Full"
+   ],
+   "ms": 260.4,
+   "bge_top_score": 0.59
+  },
+  {
+   "wish": "günlük hayattan kısa hikâyeler",
+   "criteria": [
+    "günlük hayattan kısa hikâyeler"
+   ],
+   "gold": [
+    "Hayatin_icinden_TBY_1b_2000_adet_Full",
+    "4_YMO"
+   ],
+   "v3_rank": 3,
+   "bge_rank": 2,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "7_İbrahimi_Genc",
+    "AHAD",
+    "4_YMO"
+   ],
+   "bge_top3": [
+    "Tercume_Bilimi",
+    "4_YMO",
+    "Hayatin_icinden_TBY_1b_2000_adet_Full"
+   ],
+   "ms": 274.4,
+   "bge_top_score": 0.523
+  },
+  {
+   "wish": "tevhid kelimesinin anlamı ve şartları",
+   "criteria": [
+    "tevhid kelimesinin anlamı",
+    "şartları"
+   ],
+   "gold": [
+    "Lailaheillallah_14b"
+   ],
+   "v3_rank": 4,
+   "bge_rank": 1,
+   "v3_verdict_gold": "no",
+   "v3_top3": [
+    "15_Biz_Kimiz",
+    "7_İbrahimi_Genc",
+    "AD_6_Baski_full"
+   ],
+   "bge_top3": [
+    "Lailaheillallah_14b",
+    "EsmaTBY_1_2_Full",
+    "AD_6_Baski_full"
+   ],
+   "ms": 253.9,
+   "bge_top_score": 0.627
+  },
+  {
+   "wish": "sahabelerin hayatından örnekler",
+   "criteria": [
+    "sahabelerin hayatından örnekler"
+   ],
+   "gold": [
+    "14_SCT"
+   ],
+   "v3_rank": 2,
+   "bge_rank": 5,
+   "v3_verdict_gold": "yes",
+   "v3_top3": [
+    "10_İhtilaf_fikhi",
+    "14_SCT",
+    "1_MEKS"
+   ],
+   "bge_top3": [
+    "17_TROM_full",
+    "EsmaTBY_1_2_Full",
+    "2_MAKS"
+   ],
+   "ms": 236.8,
+   "bge_top_score": 0.554
+  },
+  {
+   "wish": "tek bir kişinin rivayet ettiği hadisler",
+   "criteria": [
+    "tek kişinin rivayet ettiği hadisler"
+   ],
+   "gold": [
+    "AHAD"
+   ],
+   "v3_rank": 23,
+   "bge_rank": 32,
+   "v3_verdict_gold": "part",
+   "v3_top3": [
+    "HHRO_TBY_1b",
+    "10_İhtilaf_fikhi",
+    "9_Ehli_Sunnet_Furkan"
+   ],
+   "bge_top3": [
+    "EsmaTBY_1_2_Full",
+    "MHN_TBY_full",
+    "9_Ehli_Sunnet_Furkan"
+   ],
+   "ms": 245.4,
+   "bge_top_score": 0.546
+  }
+ ],
+ "none": [
+  {
+   "wish": "futbol taktikleri",
+   "v3_none": false,
+   "v3_top": "“Lailaheillallah”",
+   "v3_top_verdict": "part",
+   "bge_top_score": 0.475
+  },
+  {
+   "wish": "yemek tarifleri",
+   "v3_none": true,
+   "v3_top": "Our Creed and Methodolody",
+   "v3_top_verdict": "no",
+   "bge_top_score": 0.498
+  },
+  {
+   "wish": "kuantum fiziği",
+   "v3_none": true,
+   "v3_top": "Bilim Felsefesine Giriş (Kadir Çüçen)",
+   "v3_top_verdict": "no",
+   "bge_top_score": 0.45
+  },
+  {
+   "wish": "aşk romanı",
+   "v3_none": false,
+   "v3_top": "HAYATIN İÇİNDEN",
+   "v3_top_verdict": "part",
+   "bge_top_score": 0.501
+  },
+  {
+   "wish": "borsa ve yatırım",
+   "v3_none": true,
+   "v3_top": "Науакиду'л-Ислям (Nevakıdu'l-İslam)",
+   "v3_top_verdict": "no",
+   "bge_top_score": 0.455
+  }
+ ],
+ "summary": {
+  "v3": {
+   "top1": 0.4,
+   "top3": 0.7,
+   "mrr": 0.5660257648953302
+  },
+  "bge": {
+   "top1": 0.65,
+   "top3": 0.8,
+   "mrr": 0.7507291666666667
+  },
+  "v3_gold_not_no": 0.65,
+  "v3_none_correct": 0.6,
+  "bge_min_score_in_library": 0.523,
+  "bge_max_score_not_in_library": 0.501
+ }
+}

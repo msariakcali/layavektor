@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitap Eşleştirme</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #1d1d1b; --muted: #6b6a66; --line: #e3e1db;
+    --accent: #2f5bd3; --accent-soft: #e8eefc; --good: #1f7a4d; --good-soft: #e3f3ea;
+    --warn: #a4570b; --warn-soft: #fbeedd; --bad: #b3261e; --bad-soft: #fbe5e3; --bar: #2f5bd3; --bar-bg: #eceae4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514; --panel: #1f1f1d; --ink: #ecebe7; --muted: #9c9a94; --line: #34332f;
+      --accent: #8aa8ff; --accent-soft: #232c45; --good: #6fcf9a; --good-soft: #1b3326;
+      --warn: #f0b36b; --warn-soft: #3a2a17; --bad: #f28b82; --bad-soft: #3d1f1d; --bar: #8aa8ff; --bar-bg: #2c2b28;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 17px; margin: 0; }
+  h3 { font-size: 14px; margin: 18px 0 6px; color: var(--muted); font-weight: 600; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 14px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  input[type=text] { padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg);
+                     color: var(--ink); font: inherit; min-width: 0; }
+  input[type=text]:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  #wish { flex: 1 1 240px; }
+  button { font: inherit; border-radius: 8px; border: 1px solid var(--accent); background: var(--accent); color: #fff;
+           padding: 8px 16px; cursor: pointer; font-weight: 600; }
+  button.ghost { background: transparent; color: var(--accent); }
+  @media (prefers-color-scheme: dark) { button:not(.ghost) { color: #10131c; } }
+  .examples { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  button.ex { font-size: 13px; padding: 4px 10px; border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+        border: none; cursor: pointer; font-weight: 400; }
+  .crits { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 12px; align-items: center; }
+  .crit { display: flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; background: var(--bg);
+          padding: 2px 4px 2px 2px; }
+  .crit.neg { border-color: var(--bad); background: var(--bad-soft); }
+  .crit input { border: none; background: transparent; padding: 4px 8px; width: 11ch; }
+  .crit .mode { font-size: 12px; padding: 2px 8px; border-radius: 999px; border: none; font-weight: 600;
+                background: var(--good-soft); color: var(--good); }
+  .crit.neg .mode { background: var(--bad); color: #fff; }
+  .crit .x { background: none; border: none; color: var(--muted); padding: 2px 6px; font-weight: 400; }
+  .label { font-size: 13px; color: var(--muted); }
+  .thr { display: flex; align-items: center; gap: 6px; }
+  .thr b { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 3.5ch; }
+  .banner { padding: 12px 14px; border-radius: 10px; margin-bottom: 16px; font-weight: 600; }
+  .banner.no { background: var(--bad-soft); color: var(--bad); }
+  .card-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .verdict { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; white-space: nowrap; }
+  .verdict.yes { background: var(--good-soft); color: var(--good); }
+  .verdict.part { background: var(--warn-soft); color: var(--warn); }
+  .verdict.no { background: var(--bad-soft); color: var(--bad); }
+  .explain { margin: 8px 0 4px; }
+  .bars { display: grid; grid-template-columns: minmax(120px, max-content) 1fr 56px; gap: 6px 10px; align-items: center;
+          margin-top: 10px; font-size: 14px; }
+  .bar { height: 10px; background: var(--bar-bg); border-radius: 999px; overflow: hidden; }
+  .bar > i { display: block; height: 100%; background: var(--bar); border-radius: 999px; }
+  .bar.joint > i { background: var(--good); }
+  .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+  .strong { font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 5px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+  td.cell { text-align: right; font-variant-numeric: tabular-nums; min-width: 64px; }
+  tr.best td:first-child { font-weight: 700; }
+  .ev { border-top: 1px solid var(--line); padding: 10px 0; }
+  .meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .pill { padding: 1px 8px; border-radius: 999px; font-variant-numeric: tabular-nums; font-weight: 600; font-size: 12px; }
+  .pill.hi { background: var(--good-soft); color: var(--good); }
+  .pill.mid { background: var(--warn-soft); color: var(--warn); }
+  .pill.lo { background: var(--bad-soft); color: var(--bad); }
+  .pill.raw { background: var(--line); color: var(--ink); font-weight: 400; }
+  .text { font-size: 13.5px; cursor: pointer; }
+  .text.short { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  details summary { cursor: pointer; font-weight: 600; }
+  .note { font-size: 13px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  details.book { border-top: 1px solid var(--line); }
+  details.book > summary { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; padding: 10px 0;
+                           cursor: pointer; list-style: none; }
+  details.book > summary::-webkit-details-marker { display: none; }
+  details.book > summary .rk { color: var(--muted); font-variant-numeric: tabular-nums; min-width: 2ch; }
+  details.book > summary .bt { font-weight: 600; flex: 1 1 280px; }
+  details.book > summary .sumline { display: flex; gap: 12px; flex-wrap: wrap; width: 100%; padding-left: calc(2ch + 10px); }
+  details.book[open] > summary .bt { color: var(--accent); }
+  details.book .body { padding: 0 0 14px calc(2ch + 10px); }
+  .lang { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--warn-soft); color: var(--warn); }
+  .skipped { display: inline-block; margin-left: 8px; }
+  .skipped summary { font-weight: 400; }
+  .skipped ul { margin: 6px 0 0; padding-left: 20px; }
+  .bgelist { margin: 0; padding-left: 22px; font-size: 14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Kitap eşleştirme — eğitimsiz deneme</h1>
+  <div class="sub" id="info">yükleniyor…</div>
+
+  <div class="panel">
+    <div class="row">
+      <input type="text" id="wish" placeholder="Ne okumak istiyorsun? ör. bilimle alakalı ama iç dünyamla da ilgili bir şey">
+      <button id="parse">Kriterlere ayır</button>
+    </div>
+    <div class="examples" id="examples"></div>
+    <div class="crits" id="crits"></div>
+    <div class="row">
+      <button id="match">Eşleştir</button>
+      <label class="label thr">eşik <input type="range" id="thr" min="0.1" max="0.9" step="0.05" value="0.5">
+        <b id="thrv">%50</b></label>
+      <span class="label">Kriterleri düzenleyebilir, “istiyorum / istemiyorum” arasında geçiş yapabilirsin.</span>
+    </div>
+  </div>
+
+  <div id="out"></div>
+
+  <p class="note">
+    Her kriter için her paragrafa “Bu metin X ile ilgili mi?” sorusu sorulur (4 farklı kalıbın ortalaması).
+    <b>Birlikte</b> = kriterlerin hepsinin aynı paragrafta olma olasılığı (çarpım). Yüzdeler, olasılığı eşiği geçen paragrafların oranı; bir paragraf, her kriteri eşiği geçiyorsa isteğe “uyar”.
+    Model (v3) sadece emlak ilanlarıyla eğitildi, bu alanda kalibre değil: küçük olasılıkları toplamak gürültü biriktirdiği için
+    “beklenen değer” (olasılık toplamı) yerine kesin sayım kullanılıyor. Kalibre bir modelde eşik %50'de sabit kalabilmeli;
+    burada sonucu eşiğe göre değişiyorsa, model kalibre değil demektir. Oranlar yön gösterir.
+  </p>
+</div>
+<script>
+const EXAMPLES = [
+  "ya ne okusam bilimle alakalı biraz daha iç dünyamla alakalı olsun istiyorum",
+  "oruç ve ramazan",
+  "kalp katılığı ve manevi hastalıklar",
+  "tasavvuf ve tarikatlar",
+  "ticarette dürüstlük",
+  "tercüme teknikleri",
+  "gençlere nasihat",
+  "Popper ve yanlışlanabilirlik",
+  "futbol",
+];
+let crits = [];
+const $ = id => document.getElementById(id);
+const esc = s => s.replace(/[&<>"]/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]));
+const pct = x => x >= 0.995 ? "%100" : x < 0.005 && x > 0 ? "<%1" : "%" + Math.round(x * 100);
+const cls = p => p >= 0.7 ? "hi" : p >= 0.4 ? "mid" : "lo";
+const label = c => c.neg ? c.text + " olmasın" : c.text;
+
+function renderCrits() {
+  $("crits").innerHTML = "";
+  crits.forEach((c, k) => {
+    const el = document.createElement("span");
+    el.className = "crit" + (c.neg ? " neg" : "");
+    el.innerHTML = `<button class="mode" title="istiyorum / istemiyorum">${c.neg ? "istemiyorum" : "istiyorum"}</button>
+      <input type="text" value="${esc(c.text)}" aria-label="kriter"><button class="x" title="kaldır">×</button>`;
+    const inp = el.querySelector("input");
+    inp.style.width = Math.max(8, c.text.length + 2) + "ch";
+    inp.oninput = () => { c.text = inp.value; inp.style.width = Math.max(8, inp.value.length + 2) + "ch"; };
+    inp.onkeydown = e => { if (e.key === "Enter") match(); };
+    el.querySelector(".mode").onclick = () => { c.neg = !c.neg; renderCrits(); };
+    el.querySelector(".x").onclick = () => { crits.splice(k, 1); renderCrits(); };
+    $("crits").appendChild(el);
+  });
+  const add = document.createElement("input");
+  add.type = "text"; add.placeholder = "+ kriter ekle"; add.style.width = "16ch";
+  add.onkeydown = e => { if (e.key === "Enter" && add.value.trim()) { crits.push({text: add.value.trim(), neg: false}); renderCrits(); $("crits").lastChild.focus(); } };
+  $("crits").appendChild(add);
+}
+
+async function parse() {
+  const r = await fetch("/api/parse", {method: "POST", headers: {"Content-Type": "application/json"},
+                                       body: JSON.stringify({wish: $("wish").value})});
+  crits = (await r.json()).criteria;
+  renderCrits();
+}
+
+function explain(b, cs) {
+  const best = [...b.sections].sort((x, y) => y.expected - x.expected)[0];
+  const covers = cs.map((c, k) => `${label(c)} ${pct(b.cover[k])}`).join(", ");
+  if (b.verdict === "no") {
+    const why = b.thin.length ? `<b>${b.thin.map(esc).join(", ")}</b> bu kitapta neredeyse hiç yok`
+                              : "kriterler aynı paragraflarda birlikte geçmiyor";
+    return `Uymuyor: ${why}. <span class="muted">(Kapsam: ${esc(covers)})</span>`;
+  }
+  const where = best ? ` En yoğun bölüm: <b>${esc(best.title)}</b> (${best.expected} paragraf).` : "";
+  if (b.verdict === "part")
+    return `İsteğine uyan kısım az: <b>${b.expected}</b> paragraf (${pct(b.joint)}).${where}`;
+  return `Paragrafların yaklaşık <b>${pct(b.joint)}</b>'i isteğinin tamamına uyuyor (${b.expected} paragraf).${where}`;
+}
+
+function bars(b, cs) {
+  const rows = cs.map((c, k) => `<span>${esc(label(c))}</span><div class="bar"><i style="width:${b.cover[k] * 100}%"></i></div>
+    <span class="num">${pct(b.cover[k])}</span>`).join("");
+  return `<div class="bars">${rows}<span class="strong">${cs.length > 1 ? "hepsi birlikte" : "uyan kısım"}</span>
+    <div class="bar joint"><i style="width:${b.joint * 100}%"></i></div><span class="num strong">${pct(b.joint)}</span></div>`;
+}
+
+function sectionTable(b, cs) {
+  const bestE = Math.max(...b.sections.map(s => s.expected));
+  const head = cs.map(c => `<th style="text-align:right">${esc(label(c))}</th>`).join("");
+  const shade = x => `background: color-mix(in srgb, var(--bar) ${Math.round(x * 55)}%, transparent)`;
+  const rows = b.sections.map(s => `<tr class="${s.expected === bestE && bestE >= 1 ? "best" : ""}">
+    <td>${esc(s.title)} <span class="muted">s.${s.page}</span></td>
+    ${s.cover.map(x => `<td class="cell" style="${shade(x)}">${pct(x)}</td>`).join("")}
+    <td class="cell" style="${shade(s.joint)}">${pct(s.joint)}</td><td class="cell">${s.expected}</td></tr>`).join("");
+  return `<div class="table-wrap"><table><thead><tr><th>Bölüm</th>${head}<th style="text-align:right">birlikte</th>
+    <th style="text-align:right">uyan paragraf</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function evidence(list, cs) {
+  return list.map((e, r) => `<div class="ev"><div class="meta"><span>#${r + 1} · s.${e.page}${e.page_end !== e.page ? "–" + e.page_end : ""}</span>
+      ${cs.length > 1 ? `<span class="pill ${cls(e.joint)}">birlikte ${pct(e.joint)}</span>` : ""}
+      ${cs.map((c, k) => `<span class="pill ${cls(e.probs[k])}">${esc(label(c))} ${pct(e.probs[k])}</span>`).join("")}</div>
+      <div class="text short" onclick="this.classList.toggle('short')">${esc(e.text)}</div></div>`).join("");
+}
+
+const V = {yes: "Uyuyor", part: "Kısmen uyuyor", no: "Uymuyor"};
+const LANG = {tr: "", en: "İngilizce", de: "Almanca", fr: "Fransızca", fa: "Farsça", ar: "Arapça", ku: "Kürtçe", bg: "Bulgarca"};
+const langTag = l => LANG[l] ? `<span class="lang">${LANG[l]}</span>` : "";
+
+function bookCard(b, cs, rank, open) {
+  const nums = cs.map((c, k) => `<span class="num">${esc(label(c))} ${pct(b.cover[k])}</span>`).join("");
+  return `<details class="book"${open ? " open" : ""}><summary>
+      <span class="rk">${rank}</span><span class="bt">${esc(b.title)} ${langTag(b.lang)}</span>
+      <span class="verdict ${b.verdict}">${V[b.verdict]}</span>
+      <span class="sumline">${nums}${cs.length > 1 ? `<span class="num strong">birlikte ${pct(b.joint)}</span>` : ""}
+        <span class="num">${b.expected} / ${b.n} paragraf</span></span></summary>
+      <div class="body"><div class="explain">${explain(b, cs)}</div>
+      ${bars(b, cs)}
+      <h3>Bölümlere göre</h3>${sectionTable(b, cs)}
+      <h3>Kanıt paragrafları (isteğe en çok uyanlar)</h3>${evidence(b.evidence, cs)}
+      <p class="note">${esc(b.book)}.pdf · ${b.n} paragraf</p></div></details>`;
+}
+
+async function match() {
+  const cs = crits.filter(c => c.text.trim());
+  if (!cs.length) { await parse(); if (!crits.length) return; return match(); }
+  $("out").innerHTML = `<div class="panel muted">hesaplanıyor…</div>`;
+  const r = await fetch("/api/match", {method: "POST", headers: {"Content-Type": "application/json"},
+                                       body: JSON.stringify({wish: $("wish").value, criteria: cs, threshold: +$("thr").value})});
+  const d = await r.json();
+  if (d.error) { $("out").innerHTML = `<div class="panel">${esc(d.error)}</div>`; return; }
+  const fit = d.books.filter(b => b.verdict !== "no"), rest = d.books.filter(b => b.verdict === "no");
+  let h = d.none ? `<div class="banner no">Bu kütüphanede bu isteğe uyan kitap yok.</div>` : "";
+  if (fit.length)
+    h += `<div class="panel"><div class="card-head"><h2>Önerilen kitaplar (${fit.length})</h2>
+        <span class="note">v3 ${d.ms} ms · ${d.books.reduce((a, b) => a + b.n, 0)} paragraf</span></div>
+        ${fit.map((b, k) => bookCard(b, d.criteria, k + 1, k < 3)).join("")}</div>`;
+  h += `<div class="panel"><details><summary>Uymayan kitaplar (${rest.length})</summary>
+      ${rest.map((b, k) => bookCard(b, d.criteria, fit.length + k + 1, false)).join("")}</details></div>`;
+  h += `<div class="panel"><h2>Kütüphane genelinde isteğe en çok uyan paragraflar</h2>
+      ${d.top.map((e, r) => `<div class="ev"><div class="meta"><b>${esc(e.title)}</b><span>s.${e.page}</span>
+        ${d.criteria.length > 1 ? `<span class="pill ${cls(e.joint)}">birlikte ${pct(e.joint)}</span>` : ""}
+        ${d.criteria.map((c, k) => `<span class="pill ${cls(e.probs[k])}">${esc(label(c))} ${pct(e.probs[k])}</span>`).join("")}</div>
+        <div class="text short" onclick="this.classList.toggle('short')">${esc(e.text)}</div></div>`).join("")}</div>`;
+  h += `<div class="panel"><details><summary>Standart RAG (bge-m3) aynı isteğe ne derdi?</summary>
+      <p class="note">Sorgu: “${esc(d.bge.query)}” · ${d.bge.ms} ms. Kosinüs benzerliği olasılık değil: bundan
+      “kitabın ne kadarı”, “hangi kriter eksik” ya da “uymuyor” çıkarılamaz; her istekte yine en benzer paragraflar gelir.</p>
+      <h3>Kitap sıralaması (en iyi 10 paragrafın kosinüs ortalaması)</h3>
+      <ol class="bgelist">${d.bge.book_scores.slice(0, 10).map(s => `<li>${esc(s.title)} <span class="pill raw">${s.score}</span></li>`).join("")}</ol>
+      <h3>En benzer paragraflar</h3>
+      ${d.bge.results.map((e, r) => `<div class="ev"><div class="meta"><b>${esc(e.title)}</b><span>s.${e.page}</span>
+        <span class="pill raw">kosinüs ${e.score}</span></div>
+        <div class="text short" onclick="this.classList.toggle('short')">${esc(e.text)}</div></div>`).join("")}
+      </details></div>`;
+  $("out").innerHTML = h;
+}
+
+$("parse").onclick = parse;
+$("thr").oninput = () => { $("thrv").textContent = pct(+$("thr").value); };
+$("thr").onchange = () => { if (crits.length) match(); };
+$("match").onclick = match;
+$("wish").onkeydown = async e => { if (e.key === "Enter") { await parse(); match(); } };
+EXAMPLES.forEach(x => {
+  const b = document.createElement("button");
+  b.className = "ex"; b.textContent = x;
+  b.onclick = async () => { $("wish").value = x; await parse(); match(); };
+  $("examples").appendChild(b);
+});
+renderCrits();
+fetch("/api/info").then(r => r.json()).then(i => {
+  const langs = {};
+  i.books.forEach(b => { langs[b.lang] = (langs[b.lang] || 0) + 1; });
+  $("info").innerHTML = `${i.books.length} kitap, ${i.n_chunks.toLocaleString("tr")} paragraf
+    (${Object.entries(langs).map(([l, n]) => `${LANG[l] || "Türkçe"} ${n}`).join(", ")}) · model: ${esc(i.student)}
+    <details class="skipped"><summary>${i.skipped.length} dosya atlandı</summary>
+    <ul>${i.skipped.map(s => `<li>${esc(s.id)}: ${esc(s.reason)}</li>`).join("")}</ul></details>`;
+});
+</script>
+</body>
+</html>
