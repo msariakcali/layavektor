@@ -3,3 +3,24 @@ weights/
 ckpt/
 data/
 __pycache__/
+
+# kitaplar (telifli PDF'ler) ve önbellekleri
+*.pdf
+books/
+
+# model / önbellek dosyaları klasör dışına düşerse
+*.pt
+*.npy
+*.safetensors
+
+# ortam, sırlar, editör
+.env
+.env.*
+.venv/
+venv/
+.idea/
+.vscode/
+.claude/
+*.log
+.DS_Store
+Thumbs.db
